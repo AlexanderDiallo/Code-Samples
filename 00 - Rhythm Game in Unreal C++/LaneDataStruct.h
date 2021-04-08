@@ -7,7 +7,7 @@
 class ANoteLane;
 
 /**
- *
+ * A struct used by NoteLane to group relevant information together
  */
 USTRUCT(BlueprintType)
 struct FLaneData
@@ -22,5 +22,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TSubclassOf<AAsteroid> AsteroidBlueprint;
 
+    /** An array of the active asteroids/notes on the note lane*/
     TArray<AAsteroid*>  AsteroidArray;
 };

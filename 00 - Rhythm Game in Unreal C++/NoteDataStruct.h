@@ -4,7 +4,7 @@
 #include "Engine/DataTable.h"
 #include "NoteDataStruct.generated.h"
 
-UENUM(BlueprintType)		//"BlueprintType" is essential to include
+UENUM(BlueprintType)
 enum class ENoteType : uint8
 {
     Tap 	UMETA(DisplayName = "Tap"),
@@ -13,7 +13,7 @@ enum class ENoteType : uint8
 };
 
 /**
- *
+ * Struct used to hold note data such as when and where to spawn it
  */
 USTRUCT(BlueprintType)
 struct FNoteData : public FTableRowBase

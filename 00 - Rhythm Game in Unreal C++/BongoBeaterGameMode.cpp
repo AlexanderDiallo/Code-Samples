@@ -9,17 +9,11 @@
 #include "Public/DataReceiverBFL.h"
 #include "Public/AsteroidSpawner.h"
 
-#include "TimeSynthComponent.h"
-#include "SynthComponents/SynthComponentWaveTable.h"
-
 #include "Components/StaticMeshComponent.h"
 
 ABongoBeaterGameMode::ABongoBeaterGameMode()
 {
     SynthSamplePlayerComponent = CreateDefaultSubobject<USynthSamplePlayer>("SynthSamplePlayerComponent");
-
-    TimeSynthComponent = CreateDefaultSubobject<UTimeSynthComponent>("TimeSynthComponent");
-    TimeSynthComponent->bEnableSpectralAnalysis = true;
 
     SetRootComponent(SynthSamplePlayerComponent);
 }
@@ -65,21 +59,6 @@ void ABongoBeaterGameMode::Tick(float DeltaTime)
         NextNoteIndex++;
     }
 
-    if (EnvironmentObjects.Num() > 0)
-    {
-        for (const auto specData : TimeSynthComponent->GetSpectralData())
-        {
-            const unsigned int index = specData.FrequencyHz / 10.f - 1;
-
-            UStaticMeshComponent* spectrumBar = EnvironmentObjects[index];
-
-            FVector barScale = spectrumBar->GetComponentScale();
-            barScale.Z = DefaultHeightEnvObjects[index] + specData.Magnitude * 200.f;
-
-            spectrumBar->SetWorldScale3D(FMath::VInterpTo(spectrumBar->GetComponentScale(), barScale, DeltaTime, 5.f));
-        } 
-    }
-
     UpdateCurrentBeat();
 }
 
@@ -119,32 +98,6 @@ float ABongoBeaterGameMode::GetSongPositionInBeats() const
     return SongPositionInBeats;
 }
 
-void ABongoBeaterGameMode::BeginSoundVisualization(TArray<UStaticMeshComponent*> Objects)
-{
-    if (!CurrentSongData) 
-    { 
-        return;
-    }
-
-    if (!CurrentSongData->TSClip)
-    {
-        UE_LOG(LogTemp, Error, TEXT("%s: No time synth clip has been assigned to the song."), *GetName());
-        return;
-    }
-
-    EnvironmentObjects = Objects;
-    DefaultHeightEnvObjects.Empty();
-
-    for (int32 i = 1; i <= Objects.Num(); i++)
-    {
-        TimeSynthComponent->FrequenciesToAnalyze.Add(i * 10.f); // 25 Hz
-
-        DefaultHeightEnvObjects.Add(EnvironmentObjects[(i - 1)]->GetComponentScale().Z);
-    }
-
-    TimeSynthComponent->PlayClip(CurrentSongData->TSClip);
-}
-
 float ABongoBeaterGameMode::GetEarliestPossibleHitInBeats() const
 {
     if (!CurrentSongData) { return 0.0f; }
@@ -164,22 +117,10 @@ const FSongData* ABongoBeaterGameMode::GetCurrentSongData() const
     return CurrentSongData;
 }
 
-TArray<float> ABongoBeaterGameMode::GetAmplitude_Implementation(USoundWave * SoundWave, int32 Channel, float StartTime, float TimeLength, int32 AmplitudeBuckets)
-{
-	UE_LOG(LogTemp, Error, TEXT("%s: GetAmplitude has not been overridden!"), *GetName());
-	return TArray<float>();
-}
-
 USoundWave* ABongoBeaterGameMode::GetSong() const
 {
     if (!CurrentSongData) { return nullptr; }
     return CurrentSongData->Song;
-}
-
-UOnsetNRT * ABongoBeaterGameMode::GetOnsetNRT() const
-{
-	if (!CurrentSongData) { return nullptr; }
-	return CurrentSongData->SongOnsetNRT;
 }
 
 void ABongoBeaterGameMode::RaiseAttemptedNoteHitEvent(int32 LaneIndex)
@@ -256,6 +197,64 @@ void ABongoBeaterGameMode::SetNextNoteIndexBasedOnPlaybackTime(float PlaybackTim
     UE_LOG(LogTemp, Warning, TEXT("%s: Calculated NextNoteIndex is: %i"), *GetName(), NextNoteIndex);
 }
 
+void ABongoBeaterGameMode::LoadNoteDataFromLevelSequence()
+{
+    if (!CurrentSongData) { return; }
+    if (!CurrentSongData->LevelSequence)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("%s: No level sequence for note data has been assigned"), *GetName());
+        return;
+    }
+
+    NoteData = UDataReceiverBFL::GetSequencerKeys(
+        CurrentSongData->SongBPM,
+        CurrentSongData->LevelSequence
+    );
+}
+
+void ABongoBeaterGameMode::UpdateCurrentBeat()
+{
+    int32 SongProgressionInBeatsTrunc = GetSongPositionInBeats();
+
+    while(SongProgressionInBeatsTrunc > CurrentBeat)
+    {
+        CurrentBeat++;
+        OnBeat.Broadcast();
+    }
+}
+
+void ABongoBeaterGameMode::UpdateScore(FNoteEventData NoteEventData)
+{
+    if (NoteEventData.NoteHit)
+    {
+        ScoreData.CurrentCombo++;
+        ScoreData.MaxCombo = FMath::Max<int32>(ScoreData.MaxCombo, ScoreData.CurrentCombo);
+        UE_LOG(LogTemp, Warning, TEXT("%s: Current combo is %i"), *GetName(), ScoreData.CurrentCombo);
+    }
+    else
+    {
+        ScoreData.MaxCombo = FMath::Max<int32>(ScoreData.MaxCombo, ScoreData.CurrentCombo);
+        ScoreData.CurrentCombo = 0;
+        UE_LOG(LogTemp, Warning, TEXT("%s: Note missed, max combo is %i"), *GetName(), ScoreData.MaxCombo);
+    }
+}
+
+const FScoreData& ABongoBeaterGameMode::GetScoreData() const
+{
+    return ScoreData;
+}
+
+void ABongoBeaterGameMode::PlaySong()
+{
+    if (!CurrentSongData || !CurrentSongData->Song)
+    {
+        return;
+    }
+
+    SynthSamplePlayerComponent->Start();
+    SkipToPlayBackTime(CurrentSongData->SongPlaybackStartTime);
+}
+
 void ABongoBeaterGameMode::LoadNoteData_Implementation()
 {
     //TODO: this is a test dummy implementation, remember to replace with actual implementation
@@ -263,7 +262,7 @@ void ABongoBeaterGameMode::LoadNoteData_Implementation()
     NoteData.Empty();
 
     FNoteData DummyData;
-    
+
     DummyData.Beat = 0.0f;
     DummyData.LaneIndex = 1;
     NoteData.Push(DummyData);
@@ -359,62 +358,4 @@ void ABongoBeaterGameMode::LoadNoteData_Implementation()
     DummyData.Beat = 23.0f;
     DummyData.LaneIndex = 2;
     NoteData.Push(DummyData);
-}
-
-void ABongoBeaterGameMode::LoadNoteDataFromLevelSequence()
-{
-    if (!CurrentSongData) { return; }
-    if (!CurrentSongData->LevelSequence)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("%s: No level sequence for note data has been assigned"), *GetName());
-        return;
-    }
-
-    NoteData = UDataReceiverBFL::GetSequencerKeys(
-        CurrentSongData->SongBPM,
-        CurrentSongData->LevelSequence
-    );
-}
-
-void ABongoBeaterGameMode::UpdateCurrentBeat()
-{
-    int32 SongProgressionInBeatsTrunc = GetSongPositionInBeats();
-
-    while(SongProgressionInBeatsTrunc > CurrentBeat)
-    {
-        CurrentBeat++;
-        OnBeat.Broadcast();
-    }
-}
-
-void ABongoBeaterGameMode::UpdateScore(FNoteEventData NoteEventData)
-{
-    if (NoteEventData.NoteHit)
-    {
-        ScoreData.CurrentCombo++;
-        ScoreData.MaxCombo = FMath::Max<int32>(ScoreData.MaxCombo, ScoreData.CurrentCombo);
-        UE_LOG(LogTemp, Warning, TEXT("%s: Current combo is %i"), *GetName(), ScoreData.CurrentCombo);
-    }
-    else
-    {
-        ScoreData.MaxCombo = FMath::Max<int32>(ScoreData.MaxCombo, ScoreData.CurrentCombo);
-        ScoreData.CurrentCombo = 0;
-        UE_LOG(LogTemp, Warning, TEXT("%s: Note missed, max combo is %i"), *GetName(), ScoreData.MaxCombo);
-    }
-}
-
-const FScoreData& ABongoBeaterGameMode::GetScoreData() const
-{
-    return ScoreData;
-}
-
-void ABongoBeaterGameMode::PlaySong()
-{
-    if (!CurrentSongData || !CurrentSongData->Song)
-    {
-        return;
-    }
-
-    SynthSamplePlayerComponent->Start();
-    SkipToPlayBackTime(CurrentSongData->SongPlaybackStartTime);
 }

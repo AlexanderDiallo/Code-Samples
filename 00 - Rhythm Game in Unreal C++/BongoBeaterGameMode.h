@@ -22,7 +22,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSpawnNoteDelegate, const FNoteData&
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAttemptedNoteHitDelegate, int32, LaneIndex);
 
 /**
- * 
+ * Class responsible for playing the song as well as firing events relating to note spawning and responding to note hit/miss events
  */
 UCLASS()
 class BONGOBEATER_API ABongoBeaterGameMode : public ABongoBeaterGameModeBase
@@ -45,30 +45,21 @@ public:
     UFUNCTION(BlueprintCallable)
     void PlaySong();
 
+    /** Used to determine when a note should spawn relative to when it should be hit*/
     UFUNCTION(BlueprintCallable)
     float GetBeatsShownInAdvance() const;
 
+    /** Used to determine current song playback time in beats (not seconds)*/
     UFUNCTION(BlueprintCallable)
     float GetSongPositionInBeats() const;
-
-    UFUNCTION(BlueprintCallable)
-    void BeginSoundVisualization(TArray<UStaticMeshComponent*> Objects);
 
     float GetEarliestPossibleHitInBeats() const;
     float GetLatestPossibleHitInBeats() const;
 
     const FSongData* GetCurrentSongData() const;
 
-	UFUNCTION(BlueprintNativeEvent)
-	TArray<float> GetAmplitude(USoundWave* SoundWave, int32 Channel, float StartTime, float TimeLength, int32 AmplitudeBuckets);
-
-	TArray<float> GetAmplitude_Implementation(USoundWave* SoundWave, int32 Channel, float StartTime, float TimeLength, int32 AmplitudeBuckets);
-
     UFUNCTION(BlueprintCallable)
     USoundWave* GetSong() const;
-
-	UFUNCTION(BlueprintCallable)
-	UOnsetNRT* GetOnsetNRT() const;
 
     UPROPERTY(BlueprintAssignable)
     FBeatDelegate OnBeat;
@@ -112,9 +103,6 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
     USynthSamplePlayer* SynthSamplePlayerComponent = nullptr;
 
-    UPROPERTY(EditAnywhere, Category = "Audio")
-    class UTimeSynthComponent* TimeSynthComponent;
-
     UPROPERTY(BlueprintReadOnly)
     float SecondsPerBeat = 0.0f;
 
@@ -127,6 +115,7 @@ protected:
 private:
     void SetCurrentSongData(int32 SongIndex = 0);
 
+    /**Functions used to skip to a certain portion of the song so that designers can test a particular segment of the song*/
     void SkipToPlayBackTime(float PlaybackTime);
     void SetNextNoteIndexBasedOnPlaybackTime(float PlaybackTime);
 
@@ -137,7 +126,4 @@ private:
     int32 NextNoteIndex = 0;
 
     bool bIsPlaying = false;
-
-    TArray<float> DefaultHeightEnvObjects;
-    TArray<UStaticMeshComponent*> EnvironmentObjects;
 };

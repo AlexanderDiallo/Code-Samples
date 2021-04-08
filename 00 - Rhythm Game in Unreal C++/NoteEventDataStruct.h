@@ -7,7 +7,7 @@
 #include "NoteEventDataStruct.generated.h"
 
 /**
- *
+ * Struct used to communicate note hit information whenever the player hits (or attempts to hit) an asteroid/note
  */
 USTRUCT(BlueprintType)
 struct FNoteEventData

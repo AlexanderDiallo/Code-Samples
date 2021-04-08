@@ -36,9 +36,11 @@ public:
     UFUNCTION(BlueprintCallable)
     float GetNoteHitLocationOnSpline() const;
 
+    /** Used to visually represent the earliest note hit location on the spline (e.g. for debug purposes)*/
     UFUNCTION(BlueprintCallable)
     float GetEarliestNoteHitLocationOnSpline() const;
 
+    /** Used to visually represent the latest note hit location on the spline (e.g. for debug purposes)*/
     UFUNCTION(BlueprintCallable)
     float GetLatestNoteHitLocationOnSpline() const;
 
@@ -52,6 +54,7 @@ protected:
     UPROPERTY(VisibleAnywhere)
     USplineComponent* SplineComponent = nullptr;
 
+    /** Allows for different asteroids (i.e. notes) models to be used by each lane, need to set in Blueprint */
     UPROPERTY(EditAnywhere, Category = Setup)
     TSubclassOf<AAsteroid> AsteroidBlueprint;
 
