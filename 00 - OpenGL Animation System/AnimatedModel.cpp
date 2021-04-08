@@ -14,7 +14,7 @@ namespace Crown
 {
 	AnimatedModel::AnimatedModel()
 	{
-		m_Shaders = new Shader(
+		m_Shaders = std::make_unique<Shader>(
 			"../Engine/assets/shaders/GLSL/AnimatedVertexShader.vert", 
 			"../Engine/assets/shaders/GLSL/AnimatedFragmentShader.frag"
 		);
@@ -22,12 +22,7 @@ namespace Crown
 
 	AnimatedModel::~AnimatedModel()
 	{
-		delete m_Shaders;
-
-		for(auto& drawObject : m_DrawObjects)
-		{
-			delete drawObject.rootJoint;
-		}
+		
 	}
 
 	void AnimatedModel::Load(std::string a_ModelRootDirectory, std::string a_ModelFileName)
@@ -77,14 +72,14 @@ namespace Crown
 	void Crown::AnimatedModel::LoadGLTFData(std::string a_ModelRootDirectory, std::string a_ModelFileName)
 	{
 		std::string modelFilePath = a_ModelRootDirectory + a_ModelFileName;
-		std::shared_ptr<ModelData> testModelData = GLTFParser::LoadGLTFAnimation(modelFilePath.c_str());
+		std::shared_ptr<ModelData> GLTFModelData = GLTFParser::LoadGLTFAnimation(modelFilePath.c_str());
 		
-		m_DrawObjects.resize(testModelData->primitives.size());
+		m_DrawObjects.resize(GLTFModelData->primitives.size());
 
 		for(int drawObjectIndex = 0; drawObjectIndex < m_DrawObjects.size(); ++drawObjectIndex)
 		{
 			AnimationDrawObject& drawObject = m_DrawObjects[drawObjectIndex];
-			const DrawObjectData& drawObjectData = *(testModelData->primitives[drawObjectIndex]);
+			const DrawObjectData& drawObjectData = *(GLTFModelData->primitives[drawObjectIndex]);
 			
 			drawObject.vertexBuffer.resize(drawObjectData.vertices.size());
 
@@ -113,10 +108,9 @@ namespace Crown
 				LoadTexture(drawObject.texture, textureFilePath.c_str());
 			}
 
-			if(drawObjectIndex == 0)
+			if(drawObjectIndex == 0) //For now, only load animation data for first drawObject
 			{
-				delete drawObject.rootJoint;
-				drawObject.rootJoint = new Joint(testModelData->animationModelData->jointData, 0, nullptr);
+				drawObject.rootJoint = std::unique_ptr<Joint>(testModelData->animationModelData->jointData, 0, nullptr);
 				drawObject.boneMatrices.resize(testModelData->animationModelData->jointData.size());
 
 				for(auto& animationData : testModelData->animationModelData->animationData)
@@ -173,48 +167,6 @@ namespace Crown
 
 			glBindVertexArray(0);
 		}
-	}
-
-	void LoadTexture(Texture& a_Texture, char const* a_FilePath)
-	{
-		glGenTextures(1, &a_Texture.m_texture);
-		glBindTexture(GL_TEXTURE_2D, a_Texture.m_texture);
-		//Wrapping parameters
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-		//Filtering parameters
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-		stbi_set_flip_vertically_on_load(false);
-
-		int ncrChannels = 0;
-
-		//Texture 0 
-		unsigned char* data = stbi_load(a_FilePath, &a_Texture.width, &a_Texture.height, &ncrChannels, 0);
-		if (data)
-		{
-			switch (ncrChannels)
-			{
-			case 3:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, a_Texture.width, a_Texture.height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-				glGenerateMipmap(GL_TEXTURE_2D);
-				break;
-			case 4:
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, a_Texture.width, a_Texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-				glGenerateMipmap(GL_TEXTURE_2D);
-				break;
-			default:
-				assert(false);
-				break;
-			}
-		}
-		else
-		{
-			LOG("FAILED TO LOAD TEXTURE");
-			assert(false);
-		}
-		stbi_image_free(data);
 	}
 
 	void Crown::AnimatedModel::Update(float a_DeltaTime)

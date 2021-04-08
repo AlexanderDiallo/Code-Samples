@@ -2,18 +2,22 @@
 
 #include <string>
 #include <vector>
-
 #include <glm/glm.hpp>
+
+#include "AnimationStructs.h"
 
 namespace Crown
 {
 	struct JointData;
+
+	//Joint class is used to store a tree structure used to store Joint references in a "skeleton" hierarchy
 	class Joint
 	{
 	public:
 		Joint(const std::vector<std::shared_ptr<JointData>>& a_JointData, size_t a_JointIndex, Joint* a_Parent);
 		~Joint();
 
+		//Recursively update joint matrices starting from the root node
 		void UpdateBoneMatrices(std::vector<glm::mat4>& a_BoneMatrices, glm::mat4 a_Model, glm::mat4* a_ParentTransform);
 
 		Joint* FindJointByIndex(size_t a_Index);
@@ -29,9 +33,9 @@ namespace Crown
 		std::vector<Joint> m_Children;
 		Joint* m_Parent = nullptr;
 		
-		glm::vec3 m_DefaultPos;
-		glm::vec4 m_DefaultRotation;
-		glm::vec3 m_DefaultScale;
+		glm::vec3 m_LocalPos;
+		glm::vec4 m_LocalRotation;
+		glm::vec3 m_LocalScale;
 		glm::mat4 m_GlobalTransform;
 		
 		glm::mat4 m_LocalTransform;
