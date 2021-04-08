@@ -6,11 +6,11 @@ The mathematics I use are explained in a slides presentation that is also access
 
 The general system is explained here:
 
--AnimationDrawObject (in AnimationStructs.h)
-   -Responsible for storing all the data required for drawing an animated draw object such as vertex buffer data and joint (i.e. skeleton) information
--Joint
-   -Structure used to store a hierarchy of joints to calculate the associated bone matrices used in the shader
--Animation
-   -Contains the animation data (e.g. key frames, joint positions) for an AnimationDrawObject which it uses to update the joint transform data
--AnimatedModel
-   -The AnimatedModel stores one or multiple AnimationDrawObjects and is in charge of updating the animations and rendering the AnimatedModel instances
+## AnimationDrawObject (in AnimationStructs.h)
+Responsible for storing all the data required for drawing an animated draw object such as vertex buffer data and joint (i.e. skeleton) information
+## Joint
+Structure used to store a hierarchy of joints to calculate the associated bone matrices used in the shader
+## Animation
+Contains the animation data (e.g. key frames, joint positions) for an AnimationDrawObject which it uses to update the joint transform data
+## AnimatedModel
+The AnimatedModel stores one or multiple AnimationDrawObjects and is in charge of updating the animations and rendering the AnimatedModel instances
